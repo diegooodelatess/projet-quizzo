@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Quizzeo - Accueil</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+				background: #f5f7fa;
+				color: #333;
+			}
+
+			/* Header */
+			header {
+				background: white;
+				padding: 1.5rem 3rem;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.logo {
+				font-size: 1.8rem;
+				font-weight: bold;
+				color: #5b4cff;
+			}
+
+			.btn-create {
+				background: #5b4cff;
+				color: white;
+				padding: 0.8rem 1.8rem;
+				border: none;
+				border-radius: 8px;
+				font-size: 1rem;
+				cursor: pointer;
+				transition: all 0.3s ease;
+				text-decoration: none;
+				display: inline-block;
+			}
+
+			.btn-create:hover {
+				background: #4a3de6;
+				transform: translateY(-2px);
+				box-shadow: 0 5px 15px rgba(91, 76, 255, 0.3);
+			}
+
+			/* Container principal */
+			.container {
+				max-width: 1200px;
+				margin: 3rem auto;
+				padding: 0 2rem;
+			}
+
+			.page-title {
+				font-size: 2rem;
+				margin-bottom: 2rem;
+				color: #2c3e50;
+			}
+
+			/* Grille de quiz */
+			.quiz-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+				gap: 2rem;
+			}
+
+			/* Carte de quiz */
+			.quiz-card {
+				background: white;
+				border-radius: 12px;
+				padding: 1.5rem;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+				transition: all 0.3s ease;
+				cursor: pointer;
+			}
+
+			.quiz-card:hover {
+				transform: translateY(-5px);
+				box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+			}
+
+			.quiz-title {
+				font-size: 1.3rem;
+				font-weight: 600;
+				color: #2c3e50;
+				margin-bottom: 1rem;
+			}
+
+			.quiz-info {
+				display: flex;
+				gap: 1.5rem;
+				color: #7f8c8d;
+				font-size: 0.9rem;
+			}
+
+			.quiz-info-item {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+			}
+
+			.quiz-info-item::before {
+				content: '';
+				width: 6px;
+				height: 6px;
+				background: #5b4cff;
+				border-radius: 50%;
+			}
+
+			/* État vide */
+			.empty-state {
+				text-align: center;
+				padding: 4rem 2rem;
+				background: white;
+				border-radius: 12px;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+			}
+
+			.empty-state-icon {
+				font-size: 4rem;
+				margin-bottom: 1rem;
+			}
+
+			.empty-state-title {
+				font-size: 1.5rem;
+				color: #2c3e50;
+				margin-bottom: 1rem;
+			}
+
+			.empty-state-text {
+				color: #7f8c8d;
+				font-size: 1.1rem;
+				margin-bottom: 2rem;
+				cursor: pointer;
+				transition: color 0.3s ease;
+			}
+
+			.empty-state-text:hover {
+				color: #5b4cff;
+			}
+
+			/* Responsive */
+			@media (max-width: 768px) {
+				header {
+					padding: 1rem 1.5rem;
+				}
+
+				.logo {
+					font-size: 1.4rem;
+				}
+
+				.btn-create {
+					padding: 0.6rem 1.2rem;
+					font-size: 0.9rem;
+				}
+
+				.container {
+					margin: 2rem auto;
+					padding: 0 1rem;
+				}
+
+				.quiz-grid {
+					grid-template-columns: 1fr;
+					gap: 1.5rem;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<!-- Header -->
+		<header>
+			<div class="logo">Quizzeo</div>
+			<a href="create-quiz.html" class="btn-create">+ Créer un quiz</a>
+		</header>
+
+		<!-- Contenu principal -->
+		<div class="container">
+			<h1 class="page-title">Mes quiz</h1>
+
+			<!-- Grille de quiz (sera remplie par JavaScript) -->
+			<div id="quizContainer" class="quiz-grid"></div>
+		</div>
+
+		<script>
+			// Données de test - À remplacer par ta requête SQL
+			const quizData = [
+				{
+					id: 1,
+					title: 'Quiz de mathématiques',
+					dateCreation: '2024-11-15',
+					nombreQuestions: 10,
+				},
+				{
+					id: 2,
+					title: 'Satisfaction client Q4',
+					dateCreation: '2024-11-20',
+					nombreQuestions: 5,
+				},
+				{
+					id: 3,
+					title: 'Culture générale',
+					dateCreation: '2024-11-25',
+					nombreQuestions: 15,
+				},
+			];
+
+			// Fonction pour formater la date
+			function formatDate(dateString) {
+				const options = {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+				};
+				return new Date(dateString).toLocaleDateString(
+					'fr-FR',
+					options
+				);
+			}
+
+			// Fonction pour afficher les quiz
+			function displayQuizzes(quizzes) {
+				const container = document.getElementById('quizContainer');
+
+				// Si aucun quiz
+				if (quizzes.length === 0) {
+					container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <h2 class="empty-state-title">Aucun quiz pour le moment</h2>
+                        <p class="empty-state-text" onclick="window.location.href='create-quiz.html'">
+                            Tu n'as pas encore créé de quiz, crée-en un maintenant !
+                        </p>
+                    </div>
+                `;
+					return;
+				}
+
+				// Afficher les quiz
+				container.innerHTML = quizzes
+					.map(
+						(quiz) => `
+                <div class="quiz-card" onclick="openQuiz(${quiz.id})">
+                    <h3 class="quiz-title">${quiz.title}</h3>
+                    <div class="quiz-info">
+                        <span class="quiz-info-item">${formatDate(
+							quiz.dateCreation
+						)}</span>
+                        <span class="quiz-info-item">${
+							quiz.nombreQuestions
+						} question${quiz.nombreQuestions > 1 ? 's' : ''}</span>
+                    </div>
+                </div>
+            `
+					)
+					.join('');
+			}
+
+			// Fonction appelée au clic sur un quiz
+			function openQuiz(quizId) {
+				// Redirige vers la page de détails du quiz
+				window.location.href = `quiz-details.html?id=${quizId}`;
+			}
+
+			// Initialisation
+			// IMPORTANT : Remplace cette ligne par ta requête SQL
+			// Exemple avec fetch :
+			// fetch('get-quizzes.php')
+			//     .then(response => response.json())
+			//     .then(data => displayQuizzes(data));
+
+			// Pour tester avec des données vides, change quizData par []
+			displayQuizzes(quizData);
+		</script>
+	</body>
+</html>
