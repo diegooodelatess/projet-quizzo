@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+
+            background: linear-gradient(135deg, #e3e8ff, #f6f6ff, #ffffff);
+
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-box {
+            background: white;
+            width: 360px;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .logo {
+            display: block;
+            width: 120px;
+            margin: 0 auto 20px auto;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            margin-bottom: 18px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 5px rgba(78, 115, 223, 0.3);
+            outline: none;
+        }
+        nav {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4e73df;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+
+        button:hover {
+            background: #3a55b5;
+        }
+
+        .error {
+            color: #d00000;
+            text-align: center;
+            display: none;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+
+        <img src="logo.png" alt="Logo" class="logo">
+
+        <h2>Connexion</h2>
+
+        <p class="error" id="errorMsg">Veuillez remplir tous les champs.</p>
+
+        <label for="username">Identifiant</label>
+        <input type="text" id="username" placeholder="Votre identifiant">
+
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" placeholder="Votre mot de passe">
+
+        <button onclick="login()">Se connecter</button>
+
+         <nav>
+      
+            <a href="mdp.html">Tu n'as pas de compte inscrit toi</a>
+  
+        </nav>
+    </div>
+
+    <script>
+        function login() {
+            let user = document.getElementById("username").value;
+            let pass = document.getElementById("password").value;
+            let error = document.getElementById("errorMsg");
+
+            if (user === "" || pass === "") {
+                error.style.display = "block";
+            } else {
+                error.style.display = "none";
+                alert("Connexion réussie (simulation)");
+            }
+        }
+    </script>
+
+</body>
+</html>
