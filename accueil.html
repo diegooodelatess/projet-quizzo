@@ -228,39 +228,67 @@
 			// Fonction pour afficher les quiz
 			function displayQuizzes(quizzes) {
 				const container = document.getElementById('quizContainer');
+				container.textContent = ''; // Nettoie le contenu
 
 				// Si aucun quiz
 				if (quizzes.length === 0) {
-					container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📝</div>
-                        <h2 class="empty-state-title">Aucun quiz pour le moment</h2>
-                        <p class="empty-state-text" onclick="window.location.href='create-quiz.html'">
-                            Tu n'as pas encore créé de quiz, crée-en un maintenant !
-                        </p>
-                    </div>
-                `;
+					const emptyState = document.createElement('div');
+					emptyState.className = 'empty-state';
+
+					const icon = document.createElement('div');
+					icon.className = 'empty-state-icon';
+					icon.textContent = '📝';
+
+					const title = document.createElement('h2');
+					title.className = 'empty-state-title';
+					title.textContent = 'Aucun quiz pour le moment';
+
+					const text = document.createElement('p');
+					text.className = 'empty-state-text';
+					text.textContent =
+						"Tu n'as pas encore créé de quiz, crée-en un maintenant !";
+					text.style.cursor = 'pointer';
+					text.addEventListener('click', () => {
+						window.location.href = 'create-quiz.html';
+					});
+
+					emptyState.appendChild(icon);
+					emptyState.appendChild(title);
+					emptyState.appendChild(text);
+					container.appendChild(emptyState);
 					return;
 				}
 
 				// Afficher les quiz
-				container.innerHTML = quizzes
-					.map(
-						(quiz) => `
-                <div class="quiz-card" onclick="openQuiz(${quiz.id})">
-                    <h3 class="quiz-title">${quiz.title}</h3>
-                    <div class="quiz-info">
-                        <span class="quiz-info-item">${formatDate(
-							quiz.dateCreation
-						)}</span>
-                        <span class="quiz-info-item">${
-							quiz.nombreQuestions
-						} question${quiz.nombreQuestions > 1 ? 's' : ''}</span>
-                    </div>
-                </div>
-            `
-					)
-					.join('');
+				quizzes.forEach((quiz) => {
+					const card = document.createElement('div');
+					card.className = 'quiz-card';
+					card.addEventListener('click', () => openQuiz(quiz.id));
+
+					const title = document.createElement('h3');
+					title.className = 'quiz-title';
+					title.textContent = quiz.title;
+
+					const infoDiv = document.createElement('div');
+					infoDiv.className = 'quiz-info';
+
+					const dateSpan = document.createElement('span');
+					dateSpan.className = 'quiz-info-item';
+					dateSpan.textContent = formatDate(quiz.dateCreation);
+
+					const questionsSpan = document.createElement('span');
+					questionsSpan.className = 'quiz-info-item';
+					questionsSpan.textContent = `${
+						quiz.nombreQuestions
+					} question${quiz.nombreQuestions > 1 ? 's' : ''}`;
+
+					infoDiv.appendChild(dateSpan);
+					infoDiv.appendChild(questionsSpan);
+
+					card.appendChild(title);
+					card.appendChild(infoDiv);
+					container.appendChild(card);
+				});
 			}
 
 			// Fonction appelée au clic sur un quiz
