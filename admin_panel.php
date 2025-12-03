@@ -1,8 +1,7 @@
 <?php
 session_start();
 require_once 'db.php';
-
-if($_SESSION['role'] !== 'admin') header("Location: dashboard_user.php");
+if($_SESSION['role']!=='admin') header("Location: dashboard_user.php");
 
 // Activation / Désactivation
 if(isset($_GET['user_id'],$_GET['action'])){
@@ -16,7 +15,7 @@ if(isset($_GET['user_id'],$_GET['action'])){
 if(isset($_GET['quiz_id'],$_GET['action'])){
     $id = intval($_GET['quiz_id']);
     $active = $_GET['action']==='activate'?1:0;
-    $stmt=$conn->prepare("UPDATE quizzes SET active=? WHERE id=?");
+    $stmt=$conn->prepare("UPDATE quizzes SET is_active=? WHERE id=?");
     $stmt->bind_param("ii",$active,$id);
     $stmt->execute();
     $stmt->close();
@@ -24,7 +23,7 @@ if(isset($_GET['quiz_id'],$_GET['action'])){
 
 // Liste utilisateurs et quiz
 $users = $conn->query("SELECT id,email,role,active FROM users");
-$quizzes = $conn->query("SELECT id,title,owner_id,active FROM quizzes");
+$quizzes = $conn->query("SELECT id,title,owner_id,is_active FROM quizzes");
 ?>
 
 <!DOCTYPE html>
@@ -63,9 +62,9 @@ $quizzes = $conn->query("SELECT id,title,owner_id,active FROM quizzes");
 <tr>
 <td><?=htmlspecialchars($q['title'])?></td>
 <td><?=$q['owner_id']?></td>
-<td><?=$q['active']?"Oui":"Non"?></td>
+<td><?=$q['is_active']?"Oui":"Non"?></td>
 <td>
-<a href="?quiz_id=<?=$q['id']?>&action=<?=$q['active']?'deactivate':'activate'?>"><?=$q['active']?'Désactiver':'Activer'?></a>
+<a href="?quiz_id=<?=$q['id']?>&action=<?=$q['is_active']?'deactivate':'activate'?>"><?=$q['is_active']?'Désactiver':'Activer'?></a>
 </td>
 </tr>
 <?php endwhile; ?>

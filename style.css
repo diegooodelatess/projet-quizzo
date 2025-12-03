@@ -36,7 +36,7 @@ header {
 
 /* -------- LOGO -------- */
 .logo {
-    width: 300px; /* inchangé comme demandé */
+    width: 300px;
     margin-bottom: 40px;
     display: block;
     margin-left: auto;
@@ -55,6 +55,10 @@ form {
     display: flex;
     flex-direction: column;
     gap: 15px;
+}
+
+label {
+    font-weight: 500;
 }
 
 input, select, textarea {
@@ -161,6 +165,38 @@ a:hover {
     text-decoration: underline;
 }
 
+/* -------- QUESTIONS QUIZ -------- */
+.question-block {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #eee;
+}
+
+/* Pour les options Oui/Non et QCM */
+.option, .yn-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.option span, .yn-option span {
+    flex: 1;
+}
+
+/* Indiquer correct ou incorrect dans dashboard owner */
+.correct {
+    color: green;
+    font-weight: bold;
+}
+
+.wrong {
+    color: red;
+    font-weight: bold;
+}
+
 /* -------- RESPONSIVE -------- */
 @media (max-width: 768px) {
     .container {
@@ -174,5 +210,10 @@ a:hover {
 
     input, select, textarea, button {
         font-size: 0.95rem;
+    }
+
+    .option, .yn-option {
+        flex-direction: row;
+        justify-content: space-between;
     }
 }

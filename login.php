@@ -20,7 +20,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
         } elseif(password_verify($password,$user['password'])){
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
-            // Redirection selon rôle
+
             if($user['role'] === 'admin') header("Location: admin_panel.php");
             elseif($user['role'] === 'user') header("Location: dashboard_user.php");
             else header("Location: dashboard_owner.php");
