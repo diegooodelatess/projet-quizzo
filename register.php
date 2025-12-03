@@ -1,66 +1,75 @@
 <?php
+session_start();
 require_once 'db.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: register.html');
-    exit();
-}
+$error = '';
 
-$first_name = isset($_POST['first_name']) ? trim($_POST['first_name']) : '';
-$last_name  = isset($_POST['last_name']) ? trim($_POST['last_name']) : '';
-$email_raw  = isset($_POST['email']) ? trim($_POST['email']) : '';
-$email      = mb_strtolower($email_raw, 'UTF-8');
-$username   = isset($_POST['username']) ? trim($_POST['username']) : '';
-$password   = isset($_POST['password']) ? $_POST['password'] : '';
-$role       = isset($_POST['role']) ? $_POST['role'] : 'user';
-$captcha    = isset($_POST['captcha']) ? trim($_POST['captcha']) : '';
+if($_SERVER['REQUEST_METHOD'] === 'POST'){
+    $email = trim($_POST['email']);
+    $password = trim($_POST['password']);
+    $role = $_POST['role'];
 
-$errors = [];
-if ($first_name === '' || $last_name === '') $errors[] = "Prénom et nom requis.";
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email invalide.";
-if ($username === '' || mb_strlen($username) < 3) $errors[] = "Identifiant invalide (min 3).";
-if (mb_strlen($password) < 6) $errors[] = "Mot de passe trop court (min 6).";
-$allowed_roles = ['user','school','company','admin'];
-if (!in_array($role, $allowed_roles, true)) $errors[] = "Rôle invalide.";
-if ($captcha !== '7') $errors[] = "CAPTCHA incorrect.";
+    if(empty($email) || empty($password)){
+        $error = "Email et mot de passe obligatoires.";
+    } else {
+        // Vérifier si l'admin existe déjà
+        if($role === 'admin'){
+            $checkAdmin = $conn->query("SELECT id FROM users WHERE role='admin'");
+            if($checkAdmin->num_rows > 0){
+                $error = "Un administrateur existe déjà.";
+            }
+        }
 
-if (!empty($errors)) {
-    die(htmlspecialchars($errors[0]));
-}
-
-$sql_check = "SELECT id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1";
-$stmt = $conn->prepare($sql_check);
-if (!$stmt) die("Erreur prepare: " . $conn->error);
-$stmt->bind_param("ss", $username, $email);
-$stmt->execute();
-$res = $stmt->get_result();
-
-if ($row = $res->fetch_assoc()) {
-    if (mb_strtolower($row['username'], 'UTF-8') === mb_strtolower($username, 'UTF-8')) {
+        // Vérifier email unique
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email=?");
+        $stmt->bind_param("s",$email);
+        $stmt->execute();
+        $stmt->store_result();
+        if($stmt->num_rows > 0){
+            $error = "Email déjà utilisé.";
+        }
         $stmt->close();
-        die("Ce nom d'utilisateur existe déjà.");
-    }
-    if (mb_strtolower($row['email'], 'UTF-8') === $email) {
-        $stmt->close();
-        die("Cet email est déjà utilisé.");
+
+        if(!$error){
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $conn->prepare("INSERT INTO users (email,password,role,active,created_at) VALUES (?,?,?,1,NOW())");
+            $stmt->bind_param("sss",$email,$hash,$role);
+            $stmt->execute();
+            $stmt->close();
+            header("Location: login.php");
+            exit();
+        }
     }
 }
-$stmt->close();
+?>
 
-$hashed = password_hash($password, PASSWORD_DEFAULT);
-$sql_insert = "INSERT INTO users (username, password, role, first_name, last_name, email, active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW())";
-$stmt2 = $conn->prepare($sql_insert);
-if (!$stmt2) die("Erreur prepare insert: " . $conn->error);
-$stmt2->bind_param("ssssss", $username, $hashed, $role, $first_name, $last_name, $email);
-
-if ($stmt2->execute()) {
-    $stmt2->close();
-    $conn->close();
-    header("Location: login.html?registered=1");
-    exit();
-} else {
-    $err = $stmt2->error;
-    $stmt2->close();
-    $conn->close();
-    die("Erreur lors de l'inscription: " . htmlspecialchars($err));
-}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Créer un compte</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<img src="logo.png" class="logo">
+<h1>Créer un compte</h1>
+<?php if($error) echo "<p class='error'>$error</p>"; ?>
+<form method="POST">
+<label>Email :</label>
+<input type="email" name="email" required>
+<label>Mot de passe :</label>
+<input type="password" name="password" required>
+<label>Rôle :</label>
+<select name="role" required>
+    <option value="user">Utilisateur</option>
+    <option value="school">École</option>
+    <option value="company">Entreprise</option>
+    <option value="admin">Administrateur</option>
+</select>
+<button type="submit">S’inscrire</button>
+</form>
+<p><a href="login.php">Connexion</a></p>
+</div>
+</body>
+</html>

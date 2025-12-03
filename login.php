@@ -1,43 +1,56 @@
 <?php
-require_once 'db.php';
 session_start();
+require_once 'db.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: login.html');
-    exit();
+$error = '';
+
+if($_SERVER['REQUEST_METHOD'] === 'POST'){
+    $email = trim($_POST['email']);
+    $password = trim($_POST['password']);
+
+    $stmt = $conn->prepare("SELECT id,password,role,active FROM users WHERE email=?");
+    $stmt->bind_param("s",$email);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    if($res->num_rows > 0){
+        $user = $res->fetch_assoc();
+        if(!$user['active']){
+            $error = "Votre compte est désactivé.";
+        } elseif(password_verify($password,$user['password'])){
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['role'] = $user['role'];
+            // Redirection selon rôle
+            if($user['role'] === 'admin') header("Location: admin_panel.php");
+            elseif($user['role'] === 'user') header("Location: dashboard_user.php");
+            else header("Location: dashboard_owner.php");
+            exit();
+        } else $error = "Mot de passe incorrect.";
+    } else $error = "Utilisateur inconnu.";
+    $stmt->close();
 }
+?>
 
-$username = isset($_POST['username']) ? trim($_POST['username']) : '';
-$password = isset($_POST['password']) ? $_POST['password'] : '';
-
-if ($username === '' || $password === '') die("Identifiant et mot de passe requis.");
-
-$sql = "SELECT id, username, password, role, active FROM users WHERE username = ? LIMIT 1";
-$stmt = $conn->prepare($sql);
-if (!$stmt) die("Erreur prepare: " . $conn->error);
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$res = $stmt->get_result();
-$user = $res->fetch_assoc();
-$stmt->close();
-
-if (!$user) die("Identifiant ou mot de passe incorrect.");
-if (!$user['active']) die("Compte désactivé. Contactez l'administrateur.");
-if (!password_verify($password, $user['password'])) die("Identifiant ou mot de passe incorrect.");
-
-$_SESSION['user_id'] = $user['id'];
-$_SESSION['username'] = $user['username'];
-$_SESSION['role'] = $user['role'];
-
-$u = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-if ($u) { $u->bind_param("i", $user['id']); $u->execute(); $u->close(); }
-
-$conn->close();
-
-switch ($user['role']) {
-    case 'admin': header("Location: admin.php"); break;
-    case 'school': header("Location: school.php"); break;
-    case 'company': header("Location: company.php"); break;
-    default: header("Location: user.php"); break;
-}
-exit();
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Connexion</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<img src="logo.png" class="logo">
+<h1>Connexion</h1>
+<?php if($error) echo "<p class='error'>$error</p>"; ?>
+<form method="POST">
+<label>Email :</label>
+<input type="email" name="email" required>
+<label>Mot de passe :</label>
+<input type="password" name="password" required>
+<button type="submit">Se connecter</button>
+</form>
+<p><a href="register.php">Créer un compte</a></p>
+</div>
+</body>
+</html>
