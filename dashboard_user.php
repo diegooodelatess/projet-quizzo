@@ -21,7 +21,8 @@ while($r = $res->fetch_assoc()){
 <head>
 <meta charset="UTF-8">
 <title>Dashboard Utilisateur</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=<?=time()?>">
+
 </head>
 <body>
 <div class="container">

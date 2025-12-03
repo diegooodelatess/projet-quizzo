@@ -31,7 +31,8 @@ $quizzes = $conn->query("SELECT id,title,owner_id,is_active FROM quizzes");
 <head>
 <meta charset="UTF-8">
 <title>Panneau Admin</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=<?=time()?>">
+
 </head>
 <body>
 <div class="container">

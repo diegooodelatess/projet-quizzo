@@ -50,7 +50,8 @@ while($r=$res->fetch_assoc()){
 <head>
 <meta charset="UTF-8">
 <title>Réponses Quiz - <?=htmlspecialchars($quiz['title'])?></title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=<?=time()?>">
+
 </head>
 <body>
 <div class="container">

@@ -32,7 +32,8 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 <head>
 <meta charset="UTF-8">
 <title>Profil</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=<?=time()?>">
+
 </head>
 <body>
 <div class="container">
