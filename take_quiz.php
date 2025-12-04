@@ -2,176 +2,211 @@
 session_start();
 require_once 'db.php';
 
-// Vérification de connexion
-if(!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
-
+if (!isset($_SESSION['user_id'])) header("Location: login.php");
 $user_id = $_SESSION['user_id'];
 
-// Récupérer le quiz_id depuis GET
-if(!isset($_GET['quiz_id'])) {
-    die("Quiz non spécifié.");
-}
-$quiz_id = intval($_GET['quiz_id']);
+$quiz_id = intval($_GET['quiz_id'] ?? 0);
+if (!$quiz_id) die("Quiz non spécifié.");
 
-// Vérifier si l'utilisateur a déjà répondu à ce quiz
-$check_stmt = $conn->prepare("SELECT COUNT(*) AS count FROM responses WHERE user_id=? AND quiz_id=?");
-$check_stmt->bind_param("ii", $user_id, $quiz_id);
-$check_stmt->execute();
-$check_res = $check_stmt->get_result()->fetch_assoc();
-$check_stmt->close();
+// Vérifier si déjà répondu
+$stmt = $conn->prepare("SELECT COUNT(*) AS c FROM responses WHERE user_id=? AND quiz_id=?");
+$stmt->bind_param("ii", $user_id, $quiz_id);
+$stmt->execute();
+$count = $stmt->get_result()->fetch_assoc()['c'];
+$stmt->close();
 
-if($check_res['count'] > 0) {
-    // Déjà répondu -> redirection
-    header("Location: dashboard_user.php");
-    exit();
-}
+if ($count > 0) header("Location: dashboard_user.php");
 
-// Récupérer le quiz et sa clé d'accès
+// Récup quiz
 $stmt = $conn->prepare("SELECT title, access_key, is_active FROM quizzes WHERE id=? AND is_active=1");
 $stmt->bind_param("i", $quiz_id);
 $stmt->execute();
-$quiz_res = $stmt->get_result();
-if($quiz_res->num_rows === 0) {
-    die("Quiz introuvable ou inactif.");
-}
-$quiz = $quiz_res->fetch_assoc();
+$quiz = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-// Vérification clé d'accès
-$error = "";
-if(isset($_POST['access_key'])) {
-    if($_POST['access_key'] !== $quiz['access_key']) {
+if (!$quiz) die("Quiz introuvable.");
+
+// Vérification de la clé
+$error = '';
+if (isset($_POST['access_key'])) {
+    if ($_POST['access_key'] !== $quiz['access_key']) {
         $error = "Clé d'accès incorrecte.";
     } else {
-        $_SESSION['quiz_access'][$quiz_id] = true; // clé validée
+        $_SESSION['quiz_access'][$quiz_id] = true;
     }
 }
 
-// Si clé non validée, afficher formulaire
-if(empty($_SESSION['quiz_access'][$quiz_id])): ?>
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Entrer la clé du quiz</title>
-<link rel="stylesheet" href="style.css?v=<?=time()?>"/>
+    <meta charset="UTF-8">
+    <title><?= htmlspecialchars($quiz['title']) ?></title>
+
+    <!-- 🔥 TON STYLE.CSS ICI 🔥 -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-    <h2>Quiz : <?= htmlspecialchars($quiz['title']) ?></h2>
-    <?php if($error) echo "<p class='error'>$error</p>"; ?>
+
+<?php
+// Formulaire de clé d'accès
+if (empty($_SESSION['quiz_access'][$quiz_id])) {
+?>
+    <div class="container">
     <form method="POST">
+        <h2><?= htmlspecialchars($quiz['title']) ?></h2>
+        <?php if ($error) echo "<p class='error'>$error</p>"; ?>
         <label>Clé d'accès :</label>
         <input type="text" name="access_key" required>
-        <button type="submit">Valider</button>
+        <button type="submit" class="btn">Valider</button>
     </form>
-</div>
+    </div>
 </body>
 </html>
-<?php
-exit();
-endif;
+<?php 
+    exit();
+}
 
-// Si les réponses sont soumises
-if(isset($_POST['submit_answers'])) {
-    foreach($_POST as $key => $val) {
-        if(strpos($key, "question_") === 0) {
-            $question_id = intval(str_replace("question_", "", $key));
+// Envoi des réponses
+if (isset($_POST['submit_answers'])) {
+
+    foreach ($_POST as $key => $val) {
+        if (strpos($key, "question_") === 0) {
+
+            $q_id = intval(str_replace("question_", "", $key));
             $answer = $val;
 
-            // Récupérer la question pour déterminer le type et les bonnes réponses
-            $qstmt = $conn->prepare("SELECT type, correct_answer FROM questions WHERE id=?");
-            $qstmt->bind_param("i", $question_id);
-            $qstmt->execute();
-            $q_type_res = $qstmt->get_result()->fetch_assoc();
-            $qstmt->close();
+            // Récupération du type
+            $stmt = $conn->prepare("SELECT type FROM questions WHERE id=?");
+            $stmt->bind_param("i", $q_id);
+            $stmt->execute();
+            $type = $stmt->get_result()->fetch_assoc()['type'];
+            $stmt->close();
 
-            if($q_type_res['type'] === 'qcm') {
-                // Pour QCM, $val peut être un tableau si plusieurs réponses
-                if(!is_array($answer)) $answer = [$answer];
+            // ===== QCM =====
+            if ($type === 'qcm') {
 
-                $correct_answers = $q_type_res['correct_answer'] ? explode(',', $q_type_res['correct_answer']) : [];
+                if (!is_array($answer)) $answer = [$answer];
 
-                foreach($answer as $a) {
+                // bonnes réponses
+                $opt_stmt = $conn->prepare("SELECT id FROM options WHERE question_id=? AND is_correct=1");
+                $opt_stmt->bind_param("i", $q_id);
+                $opt_stmt->execute();
+                $opt_res = $opt_stmt->get_result();
+
+                $correct = [];
+                while ($o = $opt_res->fetch_assoc()) $correct[] = $o['id'];
+                $opt_stmt->close();
+
+                foreach ($answer as $a) {
                     $a = intval($a);
-                    $score = in_array($a, $correct_answers) ? 1 : 0;
+                    $score = in_array($a, $correct) ? 1 : 0;
 
-                    $stmt = $conn->prepare("INSERT INTO responses (quiz_id, user_id, question_id, answer, score) VALUES (?, ?, ?, ?, ?)");
-                    $stmt->bind_param("iiiii", $quiz_id, $user_id, $question_id, $a, $score);
+                    $stmt = $conn->prepare("
+                        INSERT INTO responses (quiz_id, question_id, user_id, answer, score)
+                        VALUES (?, ?, ?, ?, ?)
+                    ");
+                    $stmt->bind_param("iiiis", $quiz_id, $q_id, $user_id, $a, $score);
                     $stmt->execute();
                     $stmt->close();
                 }
-            } else {
-                // Pour réponse libre
-                $stmt = $conn->prepare("INSERT INTO responses (quiz_id, user_id, question_id, answer, score) VALUES (?, ?, ?, ?, ?)");
+
+            }
+            // ===== YES/NO =====
+            elseif ($type === 'yn') {
+
+                $stmt = $conn->prepare("SELECT text FROM options WHERE question_id=? AND is_correct=1 LIMIT 1");
+                $stmt->bind_param("i", $q_id);
+                $stmt->execute();
+                $correct_answer = $stmt->get_result()->fetch_assoc()['text'] ?? '';
+                $stmt->close();
+
+                $score = ($answer === $correct_answer) ? 1 : 0;
+
+                $stmt = $conn->prepare("
+                    INSERT INTO responses (quiz_id, question_id, user_id, answer, score)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmt->bind_param("iiisi", $quiz_id, $q_id, $user_id, $answer, $score);
+                $stmt->execute();
+                $stmt->close();
+            }
+            // ===== REP LIBRE =====
+            else {
+
                 $score = 0;
-                $stmt->bind_param("iiisi", $quiz_id, $user_id, $question_id, $answer, $score);
+
+                $stmt = $conn->prepare("
+                    INSERT INTO responses (quiz_id, question_id, user_id, answer, score)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmt->bind_param("iiisi", $quiz_id, $q_id, $user_id, $answer, $score);
                 $stmt->execute();
                 $stmt->close();
             }
         }
     }
-    // Redirection vers dashboard après soumission
+
     header("Location: dashboard_user.php");
     exit();
 }
 
-// Récupérer les questions et options
-$qstmt = $conn->prepare("SELECT * FROM questions WHERE quiz_id=?");
-$qstmt->bind_param("i", $quiz_id);
-$qstmt->execute();
-$q_res = $qstmt->get_result();
+// Récup questions
+$stmt = $conn->prepare("SELECT * FROM questions WHERE quiz_id=?");
+$stmt->bind_param("i", $quiz_id);
+$stmt->execute();
+$q_res = $stmt->get_result();
+
 $questions = [];
-while($q = $q_res->fetch_assoc()) {
-    // Récup options si QCM
-    $opts = [];
-    if($q['type'] === 'qcm') {
-        $ostmt = $conn->prepare("SELECT id, text FROM options WHERE question_id=?");
-        $ostmt->bind_param("i", $q['id']);
-        $ostmt->execute();
-        $o_res = $ostmt->get_result();
-        while($o = $o_res->fetch_assoc()) {
-            $opts[] = $o;
-        }
-        $ostmt->close();
+while ($q = $q_res->fetch_assoc()) {
+
+    if ($q['type'] === 'qcm' || $q['type'] === 'yn') {
+        $o_stmt = $conn->prepare("SELECT id, text FROM options WHERE question_id=?");
+        $o_stmt->bind_param("i", $q['id']);
+        $o_stmt->execute();
+        $opts = $o_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $o_stmt->close();
+        $q['options'] = $opts;
     }
-    $q['options'] = $opts;
+
     $questions[] = $q;
 }
-$qstmt->close();
+$stmt->close();
 ?>
 
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Quiz : <?= htmlspecialchars($quiz['title']) ?></title>
-<link rel="stylesheet" href="style.css?v=<?=time()?>"/>
-</head>
-<body>
 <div class="container">
-<h2>Quiz : <?= htmlspecialchars($quiz['title']) ?></h2>
 <form method="POST">
-<?php foreach($questions as $q): ?>
-    <div class="question-block">
-        <p><strong><?= htmlspecialchars($q['question_text']) ?></strong></p>
+    <h2><?= htmlspecialchars($quiz['title']) ?></h2>
 
-        <?php if($q['type'] === 'qcm'): ?>
-            <?php foreach($q['options'] as $opt): ?>
-                <label>
-                    <input type="checkbox" name="question_<?= $q['id'] ?>[]" value="<?= $opt['id'] ?>" required>
-                    <?= htmlspecialchars($opt['text']) ?>
-                </label><br>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <textarea name="question_<?= $q['id'] ?>" rows="3" required></textarea>
-        <?php endif; ?>
-    </div>
-<?php endforeach; ?>
-<button type="submit" name="submit_answers">Envoyer mes réponses</button>
+    <?php foreach ($questions as $q): ?>
+        <div class="question-block">
+            <p class="question-text"><?= htmlspecialchars($q['question_text']) ?></p>
+
+            <?php if ($q['type'] === 'qcm'): ?>
+                <?php foreach ($q['options'] as $opt): ?>
+                    <label class="option">
+                        <span><?= htmlspecialchars($opt['text']) ?></span>
+                        <input type="checkbox" name="question_<?= $q['id'] ?>[]" value="<?= $opt['id'] ?>">
+                    </label>
+                <?php endforeach; ?>
+
+            <?php elseif ($q['type'] === 'yn'): ?>
+                <?php foreach ($q['options'] as $opt): ?>
+                    <label class="yn-option">
+                        <span><?= htmlspecialchars($opt['text']) ?></span>
+                        <input type="radio" name="question_<?= $q['id'] ?>" value="<?= $opt['text'] ?>">
+                    </label>
+                <?php endforeach; ?>
+
+            <?php else: ?>
+                <textarea name="question_<?= $q['id'] ?>" rows="3"></textarea>
+            <?php endif; ?>
+        </div>
+    <?php endforeach; ?>
+
+    <button type="submit" name="submit_answers" class="btn">Envoyer mes réponses</button>
 </form>
 </div>
+
 </body>
 </html>

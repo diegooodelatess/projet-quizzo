@@ -1,5 +1,4 @@
 <?php
-// create_quiz.php
 session_start();
 require_once 'db.php';
 if(!in_array($_SESSION['role'],['school','company'])) header("Location: login.php");
@@ -7,7 +6,7 @@ if(!in_array($_SESSION['role'],['school','company'])) header("Location: login.ph
 $error = '';
 
 function generateKey($length = 10){
-    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // éviter O0I1
+    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     $key = '';
     for ($i=0; $i<$length; $i++) $key .= $chars[random_int(0, strlen($chars)-1)];
     return $key;
@@ -20,7 +19,6 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     if($title=='') $error="Le titre est obligatoire.";
 
     if(!$error){
-        // Générer clé et insert quiz
         $access_key = generateKey(10);
         $stmt = $conn->prepare("INSERT INTO quizzes (title, owner_id, is_active, access_key, created_at) VALUES (?, ?, 1, ?, NOW())");
         $stmt->bind_param("sis", $title, $_SESSION['user_id'], $access_key);
@@ -28,7 +26,6 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         $quiz_id = $stmt->insert_id;
         $stmt->close();
 
-        // Insérer questions
         foreach($questions as $q){
             $text = trim($q['text'] ?? '');
             $type = $q['type'] ?? 'qcm';
@@ -41,20 +38,16 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $question_id = $stmt->insert_id;
             $stmt->close();
 
-            if($type=='yn'){
+            if($type==='yn'){
                 $correct = $q['correct'] ?? 'Oui';
-                // Insérer Oui/Non options
-                $stmt = $conn->prepare("INSERT INTO options (question_id,text,is_correct) VALUES (?, ?, ?)");
-                $val = ($correct==='Oui')?1:0;
-                $optText = 'Oui';
-                $stmt->bind_param("isi", $question_id, $optText, $val);
-                $stmt->execute();
-                $optText = 'Non';
-                $val = ($correct==='Non')?1:0;
-                $stmt->bind_param("isi", $question_id, $optText, $val);
-                $stmt->execute();
-                $stmt->close();
-            } elseif($type=='qcm'){
+                foreach(['Oui','Non'] as $optText){
+                    $val = ($correct === $optText) ? 1 : 0;
+                    $stmt = $conn->prepare("INSERT INTO options (question_id,text,is_correct) VALUES (?, ?, ?)");
+                    $stmt->bind_param("isi", $question_id, $optText, $val);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            } elseif($type==='qcm'){
                 foreach($q['options'] ?? [] as $opt){
                     $opt_text = trim($opt['text'] ?? '');
                     if($opt_text=='') continue;
@@ -64,8 +57,6 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
                     $stmt->execute();
                     $stmt->close();
                 }
-            } elseif($type=='text'){
-                // aucune option
             }
         }
 
@@ -74,16 +65,16 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <title>Créer un quiz</title>
-<link rel="stylesheet" href="style.css?v=<?=time()?>">
+<link rel="stylesheet" href="style.css?v=<?=time()?>"/>
 </head>
 <body>
 <div class="container">
-<img src="logo.png" class="logo" alt="Logo">
 <h1>Créer un quiz</h1>
 <?php if($error) echo "<p class='error'>".htmlspecialchars($error)."</p>"; ?>
 <form method="POST" id="quizForm">
@@ -92,16 +83,14 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 
 <div id="questions"></div>
 
-<button type="button" class="btn" onclick="addQuestion()">Ajouter une question</button>
-<div style="margin-top:12px;">
-<button type="submit" class="btn">Créer le quiz</button>
-<a class="btn-ghost" href="dashboard_owner.php">Annuler</a>
-</div>
+<button type="button" onclick="addQuestion()">Ajouter une question</button>
+<button type="submit">Créer le quiz</button>
 </form>
 </div>
 
 <script>
 let qCount = 0;
+
 function addQuestion(){
     qCount++;
     const container = document.getElementById('questions');
@@ -119,17 +108,22 @@ function addQuestion(){
             <option value="yn">Oui/Non</option>
             <option value="text">Réponse libre</option>
         </select>
+
         <div id="options-${qCount}" class="options-container">
-            <label>Options (QCM) :</label><br>
-            <input type="text" name="questions[${qCount}][options][0][text]" placeholder="Option 1">
-            <label><input type="checkbox" name="questions[${qCount}][options][0][correct]"> Correct</label><br>
-            <input type="text" name="questions[${qCount}][options][1][text]" placeholder="Option 2">
-            <label><input type="checkbox" name="questions[${qCount}][options][1][correct]"> Correct</label><br>
-            <input type="text" name="questions[${qCount}][options][2][text]" placeholder="Option 3">
-            <label><input type="checkbox" name="questions[${qCount}][options][2][correct]"> Correct</label><br>
-            <input type="text" name="questions[${qCount}][options][3][text]" placeholder="Option 4">
-            <label><input type="checkbox" name="questions[${qCount}][options][3][correct]"> Correct</label><br>
+            <label>Options (QCM, 2 à 4) :</label><br>
+            <div class="option-pair">
+                <input type="text" name="questions[${qCount}][options][0][text]" placeholder="Option 1">
+                <label><input type="checkbox" name="questions[${qCount}][options][0][correct]"> Correct</label>
+                <button type="button" onclick="removeOption(this)">-</button>
+            </div>
+            <div class="option-pair">
+                <input type="text" name="questions[${qCount}][options][1][text]" placeholder="Option 2">
+                <label><input type="checkbox" name="questions[${qCount}][options][1][correct]"> Correct</label>
+                <button type="button" onclick="removeOption(this)">-</button>
+            </div>
+            <button type="button" onclick="addOption(${qCount})">Ajouter option</button>
         </div>
+
         <div id="yn-${qCount}" style="display:none">
             <label>Réponse correcte :</label>
             <select name="questions[${qCount}][correct]">
@@ -141,19 +135,33 @@ function addQuestion(){
     `;
     container.appendChild(div);
 }
+
 function updateType(select, qNum){
-    const optDiv = document.getElementById('options-'+qNum);
-    const ynDiv = document.getElementById('yn-'+qNum);
-    if(select.value==='yn'){
-        optDiv.style.display='none';
-        ynDiv.style.display='block';
-    } else if(select.value==='qcm'){
-        optDiv.style.display='block';
-        ynDiv.style.display='none';
-    } else {
-        optDiv.style.display='none';
-        ynDiv.style.display='none';
-    }
+    document.getElementById('options-'+qNum).style.display = (select.value==='qcm') ? 'block' : 'none';
+    document.getElementById('yn-'+qNum).style.display = (select.value==='yn') ? 'block' : 'none';
+}
+
+// Ajouter une option QCM
+function addOption(qNum){
+    const optionsDiv = document.getElementById('options-'+qNum);
+    const currentOptions = optionsDiv.querySelectorAll('.option-pair');
+    if(currentOptions.length >= 4) return; // max 4 options
+
+    const idx = currentOptions.length;
+    const div = document.createElement('div');
+    div.className = 'option-pair';
+    div.innerHTML = `
+        <input type="text" name="questions[${qNum}][options][${idx}][text]" placeholder="Option ${idx+1}">
+        <label><input type="checkbox" name="questions[${qNum}][options][${idx}][correct]"> Correct</label>
+        <button type="button" onclick="removeOption(this)">-</button>
+    `;
+    optionsDiv.insertBefore(div, optionsDiv.querySelector('button[onclick^="addOption"]'));
+}
+
+// Supprimer une option
+function removeOption(btn){
+    const div = btn.parentNode;
+    div.remove();
 }
 </script>
 </body>
